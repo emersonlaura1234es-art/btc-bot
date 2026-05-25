@@ -123,4 +123,4 @@ while True:
             t_alerta = now
     except Exception as e:
         print(e)
-    time.sleep(2)
+    time.sleep(3)
