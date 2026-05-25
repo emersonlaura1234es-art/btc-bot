@@ -4,15 +4,13 @@ import time
 TOKEN = "8901761801:AAFPj93E8z_uG4BBxCRP7HCjHLNhhPzP5jQ"
 
 auto_id = None
-alertas = {}
+tp_atual = None
+sl_atual = None
+alerta_ok = False
 t_sinal = 0
 t_alerta = 0
 done = set()
 off = None
-
-MOEDAS = {
-    "/btc": "BTCUSDT"
-}
 
 def send(cid, txt):
     try:
@@ -21,21 +19,26 @@ def send(cid, txt):
     except:
         pass
 
-def get_preco(symbol):
+def get_preco():
     try:
-        r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol="+symbol,timeout=10)
-        return float(r.json()["price"])
+        r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",timeout=10)
+        data = r.json()
+        return float(data["price"])
     except:
         return None
 
-def gerar(symbol, nome):
+def gerar():
+    global tp_atual, sl_atual, alerta_ok
     try:
-        r = requests.get("https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval=1h&limit=50",timeout=15)
-        ps = [float(x[4]) for x in r.json()]
+        r = requests.get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=50",timeout=15)
+        klines = r.json()
+        ps = [float(k[4]) for k in klines]
         p = ps[-1]
         ds = [ps[i]-ps[i-1] for i in range(1,len(ps))]
-        g = sum([d for d in ds[-14:] if d>0])/14
-        l = sum([-d for d in ds[-14:] if d<0])/14 or 0.001
+        gains = [d for d in ds[-14:] if d>0]
+        losses = [-d for d in ds[-14:] if d<0]
+        g = sum(gains)/14 if gains else 0
+        l = sum(losses)/14 if losses else 0.001
         rsi = 100-(100/(1+(g/l)))
         m7 = sum(ps[-7:])/7
         m20 = sum(ps[-20:])/20
@@ -49,34 +52,34 @@ def gerar(symbol, nome):
         else: v+=2
         if c>=2:
             sig = "COMPRA"
-            tp = round(p*1.02,2)
-            sl = round(p*0.99,2)
+            tp_atual = round(p*1.02,2)
+            sl_atual = round(p*0.99,2)
         elif v>=2:
             sig = "VENDA"
-            tp = round(p*0.98,2)
-            sl = round(p*1.01,2)
+            tp_atual = round(p*0.98,2)
+            sl_atual = round(p*1.01,2)
         else:
             sig = "NEUTRO"
-            tp = round(p*1.02,2)
-            sl = round(p*0.99,2)
-        alertas[symbol] = {"tp":tp,"sl":sl,"ok":False}
-        return "SINAL "+nome+"\n"+sig+"\nPreco: "+str(round(p,2))+"\nTP: "+str(tp)+"\nSL: "+str(sl)+"\nRSI: "+str(round(rsi,1))
+            tp_atual = round(p*1.02,2)
+            sl_atual = round(p*0.99,2)
+        alerta_ok = False
+        return "SINAL BTC\n"+sig+"\nPreco: "+str(round(p,2))+"\nTP: "+str(tp_atual)+"\nSL: "+str(sl_atual)+"\nRSI: "+str(round(rsi,1))
     except Exception as e:
-        return "Erro "+nome+": "+str(e)
+        return "Erro: "+str(e)
 
-def check_alertas(cid):
-    for symbol, data in alertas.items():
-        if data["ok"]:
-            continue
-        p = get_preco(symbol)
-        if not p:
-            continue
-        if p >= data["tp"]:
-            send(cid, "TAKE PROFIT "+symbol+"! Preco: "+str(p)+" Meta: "+str(data["tp"]))
-            alertas[symbol]["ok"] = True
-        elif p <= data["sl"]:
-            send(cid, "STOP LOSS "+symbol+"! Preco: "+str(p)+" Stop: "+str(data["sl"]))
-            alertas[symbol]["ok"] = True
+def check_alerta(cid):
+    global alerta_ok
+    if not tp_atual or alerta_ok:
+        return
+    p = get_preco()
+    if not p:
+        return
+    if p >= tp_atual:
+        send(cid, "TAKE PROFIT! Preco: "+str(p)+" Meta: "+str(tp_atual))
+        alerta_ok = True
+    elif p <= sl_atual:
+        send(cid, "STOP LOSS! Preco: "+str(p)+" Stop: "+str(sl_atual))
+        alerta_ok = True
 
 def get_updates():
     global off
@@ -102,18 +105,17 @@ while True:
             txt = m.get("text","")
             if txt == "/start":
                 send(cid,"Bot BTC\n/btc - Sinal agora\n/auto - Automatico 5min")
-            elif txt in MOEDAS:
-                send(cid, gerar(MOEDAS[txt], txt[1:].upper()))
+            elif txt == "/btc":
+                send(cid, gerar())
             elif txt == "/auto":
                 auto_id = cid
                 send(cid,"Auto ativado! BTC a cada 5min")
         now = time.time()
         if auto_id and now-t_sinal>300:
-            for cmd, symbol in MOEDAS.items():
-                send(auto_id, gerar(symbol, cmd[1:].upper()))
+            send(auto_id, gerar())
             t_sinal = now
         if auto_id and now-t_alerta>30:
-            check_alertas(auto_id)
+            check_alerta(auto_id)
             t_alerta = now
     except Exception as e:
         print(e)
