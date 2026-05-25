@@ -1,8 +1,7 @@
 import requests
 import time
 
-TOKEN = "8901761801:AAEmwHD2hwZI0g6NR-picR-Gm0p5i151zOw"
-
+TOKEN = "8901761801:AAFPj93E8z_uG4BBxCRP7HCjHLNhhPzP5jQ"
 auto_id = None
 alertas = {}
 t_sinal = 0
