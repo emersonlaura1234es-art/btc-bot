@@ -52,11 +52,11 @@ def gerar(coin, nome):
         elif rsi>50: v+=1
         if m7>m20: c+=2
         else: v+=2
-        if c>=3:
+        if c>=2:
             sig = "COMPRA"
             tp = round(p*1.02,2)
             sl = round(p*0.99,2)
-        elif v>=3:
+        elif v>=2:
             sig = "VENDA"
             tp = round(p*0.98,2)
             sl = round(p*1.01,2)
