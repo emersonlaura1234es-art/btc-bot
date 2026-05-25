@@ -86,7 +86,7 @@ while True:
         elif text == "/auto":
             send_message(chat_id, "✅ Sinais automáticos ativados!")
             auto_chat_id = chat_id
-    if auto_chat_id and (time.time() - last_signal_time) > 3600:
+    if auto_chat_id and (time.time() - last_signal_time) > 300:
         send_message(auto_chat_id, gerar_sinal())
         last_signal_time = time.time()
     time.sleep(2)
