@@ -97,7 +97,7 @@ def get_updates(offset=None):
     except:
         return []
 
-print("Bot iniciado...")
+print("Bot iniciado v3...")
 offset = None
 last_signal_time = 0
 last_alerta_time = 0
