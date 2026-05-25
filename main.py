@@ -1,4 +1,4 @@
-       import requests
+import requests
 import time
 
 TOKEN = "8901761801:AAEmwHD2hwZI0g6NR-picR-Gm0p5i151zOw"
@@ -119,4 +119,4 @@ while True:
             t_alerta = now
     except Exception as e:
         print(e)
-    time.sleep(2)     
+    time.sleep(2)               
