@@ -11,12 +11,7 @@ done = set()
 off = None
 
 MOEDAS = {
-    "/btc": "bitcoin",
-    "/eth": "ethereum",
-    "/sol": "solana",
-    "/bnb": "binancecoin",
-    "/xrp": "ripple",
-    "/ada": "cardano"
+    "/btc": "bitcoin"
 }
 
 def send(cid, txt):
