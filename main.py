@@ -21,18 +21,17 @@ def send(cid, txt):
 
 def get_preco():
     try:
-        r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",timeout=10)
-        data = r.json()
-        return float(data["price"])
+        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",timeout=10)
+        return float(r.json()["bitcoin"]["usd"])
     except:
         return None
 
 def gerar():
     global tp_atual, sl_atual, alerta_ok
     try:
-        r = requests.get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=50",timeout=15)
-        klines = r.json()
-        ps = [float(k[4]) for k in klines]
+        r = requests.get("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=2&interval=hourly",timeout=15)
+        data = r.json()
+        ps = [float(x[1]) for x in data["prices"]]
         p = ps[-1]
         ds = [ps[i]-ps[i-1] for i in range(1,len(ps))]
         gains = [d for d in ds[-14:] if d>0]
@@ -104,17 +103,17 @@ while True:
             cid = m.get("chat",{}).get("id")
             txt = m.get("text","")
             if txt == "/start":
-                send(cid,"Bot BTC\n/btc - Sinal agora\n/auto - Automatico 5min")
+                send(cid,"Bot BTC\n/btc - Sinal agora\n/auto - Automatico 15min")
             elif txt == "/btc":
                 send(cid, gerar())
             elif txt == "/auto":
                 auto_id = cid
-                send(cid,"Auto ativado! BTC a cada 5min")
+                send(cid,"Auto ativado! BTC a cada 15min")
         now = time.time()
-        if auto_id and now-t_sinal>300:
+        if auto_id and now-t_sinal>900:
             send(auto_id, gerar())
             t_sinal = now
-        if auto_id and now-t_alerta>30:
+        if auto_id and now-t_alerta>60:
             check_alerta(auto_id)
             t_alerta = now
     except Exception as e:
