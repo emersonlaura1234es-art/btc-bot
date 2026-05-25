@@ -44,4 +44,77 @@ def gerar(symbol, nome):
         if rsi<40: c+=2
         elif rsi<50: c+=1
         if rsi>60: v+=2
-        elif rsi>50
+        elif rsi>50: v+=1
+        if m7>m20: c+=2
+        else: v+=2
+        if c>=2:
+            sig = "COMPRA"
+            tp = round(p*1.02,2)
+            sl = round(p*0.99,2)
+        elif v>=2:
+            sig = "VENDA"
+            tp = round(p*0.98,2)
+            sl = round(p*1.01,2)
+        else:
+            sig = "NEUTRO"
+            tp = round(p*1.02,2)
+            sl = round(p*0.99,2)
+        alertas[symbol] = {"tp":tp,"sl":sl,"ok":False}
+        return "SINAL "+nome+"\n"+sig+"\nPreco: "+str(round(p,2))+"\nTP: "+str(tp)+"\nSL: "+str(sl)+"\nRSI: "+str(round(rsi,1))
+    except Exception as e:
+        return "Erro "+nome+": "+str(e)
+
+def check_alertas(cid):
+    for symbol, data in alertas.items():
+        if data["ok"]:
+            continue
+        p = get_preco(symbol)
+        if not p:
+            continue
+        if p >= data["tp"]:
+            send(cid, "TAKE PROFIT "+symbol+"! Preco: "+str(p)+" Meta: "+str(data["tp"]))
+            alertas[symbol]["ok"] = True
+        elif p <= data["sl"]:
+            send(cid, "STOP LOSS "+symbol+"! Preco: "+str(p)+" Stop: "+str(data["sl"]))
+            alertas[symbol]["ok"] = True
+
+def get_updates():
+    global off
+    try:
+        r = requests.get("https://api.telegram.org/bot"+TOKEN+"/getUpdates",
+            params={"timeout":10,"offset":off},timeout=15)
+        return r.json().get("result",[])
+    except:
+        return []
+
+print("ok")
+while True:
+    try:
+        for u in get_updates():
+            uid = u["update_id"]
+            if uid in done:
+                off = uid+1
+                continue
+            done.add(uid)
+            off = uid+1
+            m = u.get("message",{})
+            cid = m.get("chat",{}).get("id")
+            txt = m.get("text","")
+            if txt == "/start":
+                send(cid,"Bot BTC\n/btc - Sinal agora\n/auto - Automatico 5min")
+            elif txt in MOEDAS:
+                send(cid, gerar(MOEDAS[txt], txt[1:].upper()))
+            elif txt == "/auto":
+                auto_id = cid
+                send(cid,"Auto ativado! BTC a cada 5min")
+        now = time.time()
+        if auto_id and now-t_sinal>300:
+            for cmd, symbol in MOEDAS.items():
+                send(auto_id, gerar(symbol, cmd[1:].upper()))
+            t_sinal = now
+        if auto_id and now-t_alerta>30:
+            check_alertas(auto_id)
+            t_alerta = now
+    except Exception as e:
+        print(e)
+    time.sleep(2)
