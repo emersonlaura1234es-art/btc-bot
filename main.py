@@ -1,100 +1,122 @@
-import requests
+       import requests
 import time
 
 TOKEN = "8901761801:AAEmwHD2hwZI0g6NR-picR-Gm0p5i151zOw"
 
-auto_chat_id = None
-ultimo_tp = None
-ultimo_sl = None
-alerta_enviado = False
-last_signal_time = 0
-last_alerta_time = 0
-processed = set()
-offset = None
+auto_id = None
+tp = None
+sl = None
+alerta = False
+t_sinal = 0
+t_alerta = 0
+done = set()
+off = None
 
-def send_message(chat_id, text):
+def send(cid, txt):
     try:
-        url = "https://api.telegram.org/bot" + TOKEN + "/sendMessage"
-        requests.post(url, json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}, timeout=10)
+        requests.post("https://api.telegram.org/bot"+TOKEN+"/sendMessage",
+            json={"chat_id":cid,"text":txt,"parse_mode":"Markdown"},timeout=10)
     except:
         pass
 
-def get_preco():
+def preco_btc():
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-        r = requests.get(url, timeout=10)
+        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",timeout=10)
         return float(r.json()["bitcoin"]["usd"])
     except:
         return None
 
-def gerar_sinal():
-    global ultimo_tp, ultimo_sl, alerta_enviado
+def sinal():
+    global tp, sl, alerta
     try:
-        url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=hourly"
-        r = requests.get(url, timeout=15)
-        data = r.json()
-        prices = [float(p[1]) for p in data["prices"]]
-        if len(prices) < 20:
-            return "Dados insuficientes"
-        preco = prices[-1]
-        deltas = [prices[i] - prices[i-1] for i in range(1, len(prices))]
-        gains = [d for d in deltas[-14:] if d > 0]
-        losses = [-d for d in deltas[-14:] if d < 0]
-        avg_g = sum(gains) / 14 if gains else 0
-        avg_l = sum(losses) / 14 if losses else 0.001
-        rs = avg_g / avg_l
-        rsi = 100 - (100 / (1 + rs))
-        ma7 = sum(prices[-7:]) / 7
-        ma20 = sum(prices[-20:]) / 20
-        compra = 0
-        venda = 0
-        if rsi < 40:
-            compra += 2
-        elif rsi < 50:
-            compra += 1
-        if rsi > 60:
-            venda += 2
-        elif rsi > 50:
-            venda += 1
-        if ma7 > ma20:
-            compra += 2
+        r = requests.get("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1&interval=hourly",timeout=15)
+        ps = [float(x[1]) for x in r.json()["prices"]]
+        p = ps[-1]
+        ds = [ps[i]-ps[i-1] for i in range(1,len(ps))]
+        g = sum([d for d in ds[-14:] if d>0])/14
+        l = sum([-d for d in ds[-14:] if d<0])/14 or 0.001
+        rsi = 100-(100/(1+(g/l)))
+        m7 = sum(ps[-7:])/7
+        m20 = sum(ps[-20:])/20
+        c = 0
+        v = 0
+        if rsi<40: c+=2
+        elif rsi<50: c+=1
+        if rsi>60: v+=2
+        elif rsi>50: v+=1
+        if m7>m20: c+=2
+        else: v+=2
+        if c>=3:
+            sig = "COMPRA"
+            em = "green"
+            tp = round(p*1.02,2)
+            sl = round(p*0.99,2)
+        elif v>=3:
+            sig = "VENDA"
+            em = "red"
+            tp = round(p*0.98,2)
+            sl = round(p*1.01,2)
         else:
-            venda += 2
-        if compra >= 3:
-            sinal = "COMPRA"
-            emoji = "🟢"
-            forca = "FORTE" if compra >= 4 else "MODERADA"
-            tp = round(preco * 1.02, 2)
-            sl = round(preco * 0.99, 2)
-        elif venda >= 3:
-            sinal = "VENDA"
-            emoji = "🔴"
-            forca = "FORTE" if venda >= 4 else "MODERADA"
-            tp = round(preco * 0.98, 2)
-            sl = round(preco * 1.01, 2)
-        else:
-            sinal = "NEUTRO"
-            emoji = "⚪"
-            forca = "AGUARDAR"
-            tp = round(preco * 1.02, 2)
-            sl = round(preco * 0.99, 2)
-        ultimo_tp = tp
-        ultimo_sl = sl
-        alerta_enviado = False
-        tendencia = "Alta" if ma7 > ma20 else "Baixa"
-        msg = "📊 *SINAL BTC/USDT*\n"
-        msg += "━━━━━━━━━━━━━━\n"
-        msg += emoji + " *" + sinal + "* — " + forca + "\n"
-        msg += "━━━━━━━━━━━━━━\n"
-        msg += "💰 Preco: $" + str(round(preco, 2)) + "\n"
-        msg += "🎯 Take Profit: $" + str(tp) + "\n"
-        msg += "🛑 Stop Loss: $" + str(sl) + "\n"
-        msg += "📈 RSI: " + str(round(rsi, 1)) + "\n"
-        msg += "📊 Tendencia: " + tendencia + "\n"
-        msg += "━━━━━━━━━━━━━━\n"
-        msg += "⚠️ _Use como apoio, nao como garantia._"
-        return msg
+            sig = "NEUTRO"
+            em = "white"
+            tp = round(p*1.02,2)
+            sl = round(p*0.99,2)
+        alerta = False
+        txt = "SINAL BTC\n"+sig+"\nPreco: "+str(round(p,2))+"\nTP: "+str(tp)+"\nSL: "+str(sl)+"\nRSI: "+str(round(rsi,1))
+        return txt
     except Exception as e:
-        return "Erro: " + str(e)
+        return "Erro: "+str(e)
 
-def
+def check(cid):
+    global alerta
+    if not tp or alerta:
+        return
+    p = preco_btc()
+    if not p:
+        return
+    if p>=tp:
+        send(cid,"TAKE PROFIT! Preco: "+str(p)+" Meta: "+str(tp))
+        alerta = True
+    elif p<=sl:
+        send(cid,"STOP LOSS! Preco: "+str(p)+" Stop: "+str(sl))
+        alerta = True
+
+def updates():
+    global off
+    try:
+        r = requests.get("https://api.telegram.org/bot"+TOKEN+"/getUpdates",
+            params={"timeout":10,"offset":off},timeout=15)
+        return r.json().get("result",[])
+    except:
+        return []
+
+print("ok")
+while True:
+    try:
+        for u in updates():
+            uid = u["update_id"]
+            if uid in done:
+                off = uid+1
+                continue
+            done.add(uid)
+            off = uid+1
+            m = u.get("message",{})
+            cid = m.get("chat",{}).get("id")
+            txt = m.get("text","")
+            if txt=="/start":
+                send(cid,"Bot BTC\n/sinal\n/auto")
+            elif txt=="/sinal":
+                send(cid,sinal())
+            elif txt=="/auto":
+                auto_id = cid
+                send(cid,"Auto ativado 5min")
+        now = time.time()
+        if auto_id and now-t_sinal>300:
+            send(auto_id,sinal())
+            t_sinal = now
+        if auto_id and now-t_alerta>30:
+            check(auto_id)
+            t_alerta = now
+    except Exception as e:
+        print(e)
+    time.sleep(2)     
