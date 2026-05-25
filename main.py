@@ -66,19 +66,28 @@ def gerar_sinal():
 
 def get_updates(offset=None):
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    params = {"timeout": 30, "offset": offset}
-    r = requests.get(url, params=params)
-    return r.json().get("result", [])
+    params = {"timeout": 10, "offset": offset}
+    try:
+        r = requests.get(url, params=params, timeout=15)
+        return r.json().get("result", [])
+    except:
+        return []
 
 print("Bot iniciado...")
 offset = None
 last_signal_time = 0
-CHAT_ID = None
+auto_chat_id = None
+processed = set()
 
 while True:
     updates = get_updates(offset)
     for update in updates:
-        offset = update["update_id"] + 1
+        uid = update["update_id"]
+        if uid in processed:
+            offset = uid + 1
+            continue
+        processed.add(uid)
+        offset = uid + 1
         msg = update.get("message", {})
         chat_id = msg.get("chat", {}).get("id")
         text = msg.get("text", "")
@@ -89,8 +98,8 @@ while True:
             send_message(chat_id, gerar_sinal())
         elif text == "/auto":
             send_message(chat_id, "✅ Sinais automáticos ativados!")
-            CHAT_ID = chat_id
-    if CHAT_ID and (time.time() - last_signal_time) > 3600:
-        send_message(CHAT_ID, gerar_sinal())
+            auto_chat_id = chat_id
+    if auto_chat_id and (time.time() - last_signal_time) > 3600:
+        send_message(auto_chat_id, gerar_sinal())
         last_signal_time = time.time()
-    time.sleep(1)
+    time.sleep(2)
