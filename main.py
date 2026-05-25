@@ -23,15 +23,15 @@ def send(cid, txt):
 
 def get_preco(coin):
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids="+coin+"&vs_currencies=usd",timeout=10)
+        r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",timeout=10)
+return float(r.json()["price"])gecko.com/api/v3/simple/price?ids="+coin+"&vs_currencies=usd",timeout=10)
         return float(r.json()[coin]["usd"])
     except:
         return None
 
 def gerar(coin, nome):
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/coins/"+coin+"/market_chart?vs_currency=usd&days=1&interval=hourly",timeout=15)
-        ps = [float(x[1]) for x in r.json()["prices"]]
+        r = requests.get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=50",timeout=15)
         p = ps[-1]
         ds = [ps[i]-ps[i-1] for i in range(1,len(ps))]
         g = sum([d for d in ds[-14:] if d>0])/14
