@@ -15,8 +15,8 @@ MOEDAS = {
     "/eth": "ethereum",
     "/sol": "solana",
     "/bnb": "binancecoin",
-    "/xrp": "ripple-xrp",
-    "/ada": "cardano-ada-handle"
+    "/xrp": "ripple",
+    "/ada": "cardano"
 }
 
 def send(cid, txt):
