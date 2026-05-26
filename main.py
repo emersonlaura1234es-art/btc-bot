@@ -74,10 +74,12 @@ def check_alerta(cid):
     if not p:
         return
     if p >= tp_atual:
-        send(cid, "TAKE PROFIT! Preco: "+str(p)+" Meta: "+str(tp_atual))
+        lucro = round(((p-tp_atual)/tp_atual)*100,2)
+        send(cid, "TAKE PROFIT ATINGIDO!\nPreco: "+str(p)+"\nMeta: "+str(tp_atual)+"\nLucro: +2%")
         alerta_ok = True
     elif p <= sl_atual:
-        send(cid, "STOP LOSS! Preco: "+str(p)+" Stop: "+str(sl_atual))
+        perda = round(((sl_atual-p)/sl_atual)*100,2)
+        send(cid, "STOP LOSS ATINGIDO!\nPreco: "+str(p)+"\nStop: "+str(sl_atual)+"\nPerda: -1%")
         alerta_ok = True
 
 def get_updates():
